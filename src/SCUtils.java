@@ -204,6 +204,49 @@ public class SCUtils {
 		return 5;
 	}
 
+	public static byte[] intToRrsInt32(int value) {
+		long lvalue = value;
+		boolean rotate = true;
+		long b;
+		int count = 0;
+		byte[] buffer = new byte[1];
+
+		if (value == 0) {
+			while (buffer.length < count + 1) {
+				buffer = Arrays.copyOf(buffer, buffer.length << 1);
+			}
+			buffer[count] = (byte) 0;
+			++count;
+		} else {
+			lvalue = (lvalue << 1) ^ (lvalue >> 31);
+			while (lvalue != 0) {
+				b = (lvalue & 0x7f);
+
+				if (lvalue >= 0x80) {
+					b |= 0x80;
+				}
+				if (rotate) {
+					rotate = false;
+					long lsb = b & 0x1;
+					long msb = (b & 0x80) >> 7;
+					b = b >> 1; // rotate to the right
+					b = b & ~(0xC0); // clear 7th and 6th bit
+					b = b | (msb << 7) | (lsb << 6); // insert msb and lsb back
+														// in
+				}
+
+				while (buffer.length < count + 1) {
+					buffer = Arrays.copyOf(buffer, buffer.length << 1);
+				}
+				buffer[count] = (byte) b;
+				++count;
+				lvalue >>>= 7;
+			}
+		}
+
+		return buffer;
+	}
+
 	public static class RrsInt32 {
 		public int length;
 		public long value;
