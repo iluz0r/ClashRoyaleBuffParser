@@ -1,6 +1,7 @@
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Random;
 
 public class SCUtils {
@@ -204,47 +205,24 @@ public class SCUtils {
 		return 5;
 	}
 
-	public static byte[] intToRrsInt32(int value) {
-		long lvalue = value;
-		boolean rotate = true;
-		long b;
-		int count = 0;
-		byte[] buffer = new byte[1];
-
-		if (value == 0) {
-			while (buffer.length < count + 1) {
-				buffer = Arrays.copyOf(buffer, buffer.length << 1);
-			}
-			buffer[count] = (byte) 0;
-			++count;
-		} else {
-			lvalue = (lvalue << 1) ^ (lvalue >> 31);
-			while (lvalue != 0) {
-				b = (lvalue & 0x7f);
-
-				if (lvalue >= 0x80) {
-					b |= 0x80;
-				}
-				if (rotate) {
-					rotate = false;
-					long lsb = b & 0x1;
-					long msb = (b & 0x80) >> 7;
-					b = b >> 1; // rotate to the right
-					b = b & ~(0xC0); // clear 7th and 6th bit
-					b = b | (msb << 7) | (lsb << 6); // insert msb and lsb back
-														// in
-				}
-
-				while (buffer.length < count + 1) {
-					buffer = Arrays.copyOf(buffer, buffer.length << 1);
-				}
-				buffer[count] = (byte) b;
-				++count;
-				lvalue >>>= 7;
-			}
+	public static void packRrsInt32(List<Byte> buffer, int value) {
+		if (value > 63) {
+			buffer.add((byte) (value & 0x3F | 0x80));
+			if (value > 8191) {
+				buffer.add((byte) (value >> 6 | 0x80));
+				if (value > 1048575) {
+					buffer.add((byte) (value >> 13 | 0x80));
+					if (value > 134217727) {
+						buffer.add((byte) (value >> 20 | 0x80));
+						value >>= 27 & 0x7F;
+					} else
+						value >>= 20 & 0x7F;
+				} else
+					value >>= 13 & 0x7F;
+			} else
+				value >>= 6 & 0x7F;
 		}
-
-		return buffer;
+		buffer.add((byte) value);
 	}
 
 	public static class RrsInt32 {
